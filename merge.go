@@ -493,6 +493,12 @@ func mergeTermFreqNormLocsByCopying(term []byte, postItr *PostingsIterator,
 	nextDocNum, nextFreq, nextNorm, nextFreqNormBytes, nextLocBytes, err :=
 		postItr.nextBytes()
 	for err == nil && len(nextFreqNormBytes) > 0 {
+		if nextDocNum >= uint64(len(newDocNums)) {
+			// corrupt segment: docNum beyond segment size (bleve#1306), skip
+			nextDocNum, nextFreq, nextNorm, nextFreqNormBytes, nextLocBytes, err =
+				postItr.nextBytes()
+			continue
+		}
 		hitNewDocNum := newDocNums[nextDocNum]
 		if hitNewDocNum == docDropped {
 			return 0, 0, 0, fmt.Errorf("see hit with dropped doc num")
@@ -529,6 +535,11 @@ func mergeTermFreqNormLocs(fieldsMap map[string]uint16, term []byte, postItr *Po
 	lastDocNum uint64, lastFreq uint64, lastNorm uint64, bufLocOut []uint64, err error) {
 	next, err := postItr.Next()
 	for next != nil && err == nil {
+		if next.Number() >= uint64(len(newDocNums)) {
+			// corrupt segment: docNum beyond segment size (bleve#1306), skip
+			next, err = postItr.Next()
+			continue
+		}
 		hitNewDocNum := newDocNums[next.Number()]
 		if hitNewDocNum == docDropped {
 			return 0, 0, 0, nil, fmt.Errorf("see hit with dropped docNum")
